@@ -23,7 +23,7 @@ SMALL_CIRCLE = 3
 
 #Create Tkinter window
 root = Tk()
-root.title('Social Distancing Application')
+root.title('Human Social Distancing Detection Application')
 root.geometry("650x250")
 root.attributes('-fullscreen', True)
 
