@@ -39,12 +39,16 @@ browse_btn.grid(column=0, row=0)
 
 #Terminate Button
 terminate_txt = StringVar()
-terminate_btn = Button(root, text="Exit Application", command=root.destroy, font="Raleway", bg="#70747c", fg="white", height=2, width=15)
+terminate_btn = Button(root, text="Exit Application", command=lambda:termint(), font="Raleway", bg="#70747c", fg="white", height=2, width=15)
 terminate_btn.grid(column=0, row=1)
 
 #Percentage for file processing
 percent = Label(root, text = 0)
 percent.grid(column=0, row=2)
+
+#Text for violation rules
+counterTxt = Label(root, text = 'Rules Violated(by individual): 0')
+counterTxt.grid(column=5, row=2)
 
 def open_file():
     browse_text.set("Uploading...")
@@ -53,6 +57,12 @@ def open_file():
     if file:
            browse_text.set("Done Uploaded")
            main(file.name)
+
+termination = False          
+def termint():
+    global termination
+    termination=True
+    root.destroy()
 
 def get_human_box_detection(boxes,scores,classes,height,width):
 	"""
@@ -219,20 +229,36 @@ def main(video_path):
                 x,y = point
                 cv2.circle(bird_view_img, (x,y), BIG_CIRCLE, COLOR_GREEN, 2)
                 cv2.circle(bird_view_img, (x,y), SMALL_CIRCLE, COLOR_GREEN, -1)
-
+             
+            #---Reset violation counter for each frame---
+            counter = 0
+            
             # Check if 2 or more people have been detected (otherwise no need to detect)
             if len(transformed_downoids) >= 2:
                 for index,downoid in enumerate(transformed_downoids):
                     if not (downoid[0] > width or downoid[0] < 0 or downoid[1] > height+200 or downoid[1] < 0 ):
                         cv2.rectangle(frame,(array_boxes_detected[index][1],array_boxes_detected[index][0]),(array_boxes_detected[index][3],array_boxes_detected[index][2]),COLOR_GREEN,2)
-
+                        
+                violate_list= []
                 # Iterate over every possible 2 by 2 between the points combinations
                 list_indexes = list(itertools.combinations(range(len(transformed_downoids)), 2))
                 for i,pair in enumerate(itertools.combinations(transformed_downoids, r=2)):
                     # Check if the distance between each combination of points is less than the minimum distance chosen
                     if math.sqrt( (pair[0][0] - pair[1][0])**2 + (pair[0][1] - pair[1][1])**2 ) < int(distance_minimum):
+                    
+                        #Count the violated individual
+                        if pair[0][0] and pair[0][1] not in violate_list:
+                            violate_list.append(pair[0][0])
+                            violate_list.append(pair[0][1])
+                            counter +=1
+                        if pair[1][0] and pair[1][1] not in violate_list:
+                            violate_list.append(pair[1][0])
+                            violate_list.append(pair[1][1]) 
+                            counter+=1
+                    
                         # Change the colors of the points that are too close from each other to red
                         if not (pair[0][0] > width or pair[0][0] < 0 or pair[0][1] > height+200  or pair[0][1] < 0 or pair[1][0] > width or pair[1][0] < 0 or pair[1][1] > height+200  or pair[1][1] < 0):
+                            counter += 1
                             change_color_on_topview(pair, bird_view_img)
                             # Get the equivalent indexes of these points in the original frame and change the color to red
                             index_pt1 = list_indexes[i][0]
@@ -243,6 +269,9 @@ def main(video_path):
 
         # Draw the green rectangle to delimitate the detection zone
         draw_rectangle(corner_points,frame)
+                
+        #Update counter text
+        counterTxt["text"] = "Rules Violated(by individual): "+str(counter*2)
         
         #Display both video in the realtime by frame 
         #Video
